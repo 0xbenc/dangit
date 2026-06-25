@@ -126,6 +126,8 @@ does not paint are preserved, so the file round-trips with passage and ssherpa.
 See [docs/non-interactive.md](docs/non-interactive.md) for the full scripting
 reference.
 
+To the moon!
+
 ## License
 
 [MIT](LICENSE)
