@@ -1,0 +1,137 @@
+.TH DANGIT 1 "June 2026" "dangit" "User Commands"
+.SH NAME
+dangit \- find git repos with unfinished work
+.SH SYNOPSIS
+.B dangit
+[\fIPATH\fR] [\fIflags\fR]
+.br
+.B dangit scan
+[\fIPATH\fR] [\fIflags\fR]
+.br
+.B dangit resolve
+[\fIPATH\fR] [\fIflags\fR]
+.br
+.B dangit theme import
+\fIPATH\fR
+.SH DESCRIPTION
+.B dangit
+sweeps the directories beneath
+.I PATH
+(default: the current directory) for Git repositories and flags every one with
+uncommitted changes, commits not pushed to its upstream, or commits waiting to
+be pulled. The current branch is shown for each flagged repository.
+.PP
+On an interactive terminal the bare
+.B dangit
+command opens a browser: live scan progress, then a fuzzy-filterable list of
+flagged repositories you can act on. When output is not a terminal (a pipe, or
+.BR --plain ),
+it prints a plain report instead. The exit code is
+.B 1
+when any repository needs attention,
+.B 0
+when none do, and
+.B 2
+on a usage error \(em handy in scripts and CI.
+.SH COMMANDS
+.TP
+.B scan
+Print a report; never interactive. Use
+.B --json
+for a stable machine-readable envelope.
+.TP
+.B resolve
+Bring flagged repositories to a clean, synced state: auto-commit any
+uncommitted changes with a generated message, rebase-pull from the upstream,
+then push. It is a dry run that prints the plan unless
+.B --yes
+is given, never force-pushes, never auto-merges a conflict, and refuses when
+the network is disabled.
+.TP
+.B theme import \fIPATH\fR
+Replace the active theme with a portable
+.I .theme
+file written by any termtheme-based app. The previous theme is backed up.
+.TP
+.B version
+Print build version information.
+.SH FLAGS
+.TP
+.B \-t, \-\-timeout-secs \fIN\fR
+Per-repo remote-check timeout in seconds (default 10).
+.TP
+.B \-\-no-network
+Skip remote checks; behind status is reported as
+.IR stale .
+.TP
+.B \-\-json
+Machine-readable output (scan).
+.TP
+.B \-\-plain
+Force a plain report even on a TTY.
+.TP
+.B \-\-no-color
+Disable colored output.
+.TP
+.B \-\-no-alt-screen
+Render the browser inline rather than on the alternate screen.
+.TP
+.B \-\-theme-file \fIPATH\fR
+Load the theme from
+.IR PATH .
+.TP
+.B \-y, \-\-yes
+Actually perform resolve actions (default: dry run).
+.TP
+.B \-m, \-\-message \fIMSG\fR
+Commit message for resolve (default: generated).
+.SH TUI KEYS
+.TP
+.B Up/Down, j/k
+Move the selection.
+.TP
+.B /
+Filter the list; Esc clears, Enter applies.
+.TP
+.B Enter
+Show the selected repository's detail (full git status).
+.TP
+.B s
+Open a shell in the repository directory.
+.TP
+.B e
+Open the repository in
+.B $VISUAL
+or
+.BR $EDITOR .
+.TP
+.B y
+Copy the repository's absolute path to the clipboard.
+.TP
+.B R
+Resolve the selected repository (with a confirmation prompt).
+.TP
+.B r
+Re-scan.
+.TP
+.B q, Esc, Ctrl-C
+Quit.
+.SH ENVIRONMENT
+.TP
+.B DANGIT_TIMEOUT_SECS
+Default per-repo remote-check timeout.
+.TP
+.B DANGIT_NO_NETWORK
+Skip remote checks when truthy.
+.TP
+.B DANGIT_NO_COLOR, NO_COLOR
+Disable color.
+.TP
+.B DANGIT_THEME_FILE
+Theme config file path.
+.SH FILES
+.TP
+.I ~/.config/dangit/theme.conf
+Default theme configuration.
+.SH SEE ALSO
+.BR git (1)

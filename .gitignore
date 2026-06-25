@@ -1,0 +1,5 @@
+dist/
+/dangit
+*.test
+*.prof
+coverage.out
