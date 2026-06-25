@@ -66,9 +66,14 @@ jobs:
           NO_COLOR: "1"
         run: |
           set -euo pipefail
+          # Exercise the built binary, not `go run`: go run collapses any
+          # non-zero program exit to 1, which would mask exit-code assertions.
+          bin="$(mktemp -d)/dangit"
+          go build -trimpath -o "$bin" ./cmd/dangit
+
           tmp="$(mktemp -d)"
-          git init --bare -q "$tmp/origin.git"
-          git clone -q "$tmp/origin.git" "$tmp/seed"
+          git -c init.defaultBranch=main init --bare -q "$tmp/origin.git"
+          git -c init.defaultBranch=main clone -q "$tmp/origin.git" "$tmp/seed"
           echo hi > "$tmp/seed/a.txt"
           git -C "$tmp/seed" add -A
           git -C "$tmp/seed" commit -qm init
@@ -79,16 +84,16 @@ jobs:
 
           # Flagged tree exits 1.
           code=0
-          go run ./cmd/dangit scan --json "$tmp/work" >/dev/null || code=$?
+          "$bin" scan --json "$tmp/work" >/dev/null || code=$?
           if [ "$code" -ne 1 ]; then echo "expected exit 1, got $code"; exit 1; fi
 
           # Empty tree exits 0.
           mkdir -p "$tmp/empty"
-          go run ./cmd/dangit scan "$tmp/empty"
+          "$bin" scan "$tmp/empty"
 
           # Bad timeout exits 2.
           code=0
-          go run ./cmd/dangit scan --timeout-secs nope 2>/dev/null || code=$?
+          "$bin" scan --timeout-secs nope 2>/dev/null || code=$?
           if [ "$code" -ne 2 ]; then echo "expected exit 2, got $code"; exit 1; fi
 
       - name: Build native binary
