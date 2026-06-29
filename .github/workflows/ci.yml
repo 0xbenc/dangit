@@ -165,3 +165,34 @@ jobs:
           distribution: goreleaser
           version: v2.16.0
           args: check
+
+  conformance:
+    name: tui-conformance
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Shared-UI drift guards
+        shell: bash
+        run: |
+          fail=0
+          # Footers must flow through termchrome.Footer — no hand-built " / " drift.
+          if grep -rn '  /  ' internal; then
+            echo "::error::hand-built '  /  ' footer separator — use termchrome.Footer([]termchrome.KeyHint{...})"; fail=1
+          fi
+          # Spinners must use termchrome.ResolveGlyphs — no inline frame literals.
+          if grep -rnE "⠋|\[\]rune\{'\|'" internal cmd; then
+            echo "::error::inline spinner frames — use termchrome.ResolveGlyphs"; fail=1
+          fi
+          # No golden-update flag is supported (inline-literal expectation model).
+          if grep -rnE 'UPDATE_GOLDEN|flag\.[A-Za-z]+\("update"' internal; then
+            echo "::error::no golden-update flag is supported; hand-edit inline expectations"; fail=1
+          fi
+          # No replace directive in the released module graph (pin shared modules).
+          if grep -qE '^replace ' go.mod; then
+            echo "::error::replace directive in go.mod — pin tagged shared-module versions"; fail=1
+          fi
+          if [ "$fail" = 0 ]; then echo "conformance OK"; fi
+          exit $fail
