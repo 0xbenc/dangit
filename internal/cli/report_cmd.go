@@ -6,7 +6,10 @@ import (
 
 	"github.com/0xbenc/dangit/internal/report"
 	"github.com/0xbenc/dangit/internal/scan"
+	"github.com/0xbenc/dangit/internal/state"
 	"github.com/0xbenc/dangit/internal/ui"
+	"github.com/0xbenc/termintro"
+	"github.com/0xbenc/termtheme"
 )
 
 // runDefault handles the bare `dangit [PATH]` invocation: interactive browser on
@@ -96,6 +99,33 @@ func (r runner) runInteractive(path string, f flags) int {
 	if err != nil {
 		return r.usageErr(err)
 	}
+
+	// Play the shared startup intro once per version, before the browser takes
+	// over the terminal. Guarded to an interactive stderr TTY; renders to stderr
+	// so stdout stays clean. Errors are non-fatal.
+	stateDir, dirErr := state.ResolveDir(r.env)
+	lastSeen := ""
+	if dirErr == nil {
+		if intro, rerr := state.ReadIntro(stateDir); rerr == nil {
+			lastSeen = intro.LastSeenIntroVersion
+		}
+	}
+	if r.shouldPlayIntro(f, lastSeen) {
+		termintro.Play(termintro.Options{
+			Title:   "DANGIT",
+			Tagline: "find your unfinished work",
+			Credits: []string{"0xbenc"},
+			Version: introVersionLabel(r.build.Version),
+			Output:  r.stderr,
+			NoColor: termtheme.EnvNoColor("dangit", r.env, f.noColor),
+		})
+		if dirErr == nil {
+			if werr := state.WriteIntro(stateDir, state.IntroState{LastSeenIntroVersion: r.build.Version}); werr != nil {
+				fmt.Fprintf(r.stderr, "dangit: warning: could not save intro state: %v\n", werr)
+			}
+		}
+	}
+
 	remaining, err := ui.Browse(context.Background(), ui.BrowseOptions{
 		Root:        path,
 		RootLabel:   report.RootLabel(path),

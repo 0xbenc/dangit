@@ -20,6 +20,8 @@ type flags struct {
 	plain       bool
 	noColor     bool
 	noAltScreen bool
+	intro       bool
+	noIntro     bool
 	themeFile   string
 	yes         bool
 	message     string
@@ -66,6 +68,10 @@ func parseFlags(args []string) (flags, []string, error) {
 			f.noColor = true
 		case a == "--no-alt-screen":
 			f.noAltScreen = true
+		case a == "--intro":
+			f.intro = true
+		case a == "--no-intro":
+			f.noIntro = true
 		case a == "--theme-file":
 			val, err := nextValue(args, &i, a)
 			if err != nil {

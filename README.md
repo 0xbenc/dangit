@@ -11,7 +11,11 @@ Find the git repos you forgot about — *dang it.*
 with uncommitted changes, commits not pushed to its upstream, or commits waiting
 to be pulled. It's the "did I forget to commit or push anything?" ritual: run it
 over `~/code` and clean up what shows up. It's a standalone Go rewrite of the
-Bash Zoo `forgit` helper, built on the same termtheme engine as
+Bash Zoo `forgit` helper, built on the same shared TUI stack —
+[termtheme](https://github.com/0xbenc/termtheme),
+[termnav](https://github.com/0xbenc/termnav),
+[termchrome](https://github.com/0xbenc/termchrome), and
+[termintro](https://github.com/0xbenc/termintro) — as
 [passage](https://github.com/0xbenc/passage) and
 [ssherpa](https://github.com/0xbenc/ssherpa).
 
@@ -29,7 +33,12 @@ Bash Zoo `forgit` helper, built on the same termtheme engine as
 - Plain-text report and a stable `--json` envelope for scripts and CI, with
   meaningful exit codes (`0` clean · `1` needs attention · `2` usage error).
 - Theme-aware via [termtheme](https://github.com/0xbenc/termtheme); themes
-  interchange with passage and ssherpa. `NO_COLOR` respected.
+  interchange with passage and ssherpa. Fuzzy filtering + match highlighting via
+  [termnav](https://github.com/0xbenc/termnav), shared chrome/footer + locale-aware
+  spinner via [termchrome](https://github.com/0xbenc/termchrome). `NO_COLOR` respected.
+- A [termintro](https://github.com/0xbenc/termintro) startup animation, shown once
+  per version (TTY only). `--intro`/`--no-intro` and `DANGIT_INTRO_ALWAYS`/
+  `DANGIT_NO_INTRO` control it.
 - GoReleaser archives, Linux packages, and Homebrew cask publishing.
 
 ## Install

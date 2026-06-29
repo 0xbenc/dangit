@@ -8,6 +8,8 @@ import (
 
 	"github.com/0xbenc/dangit/internal/scan"
 	"github.com/0xbenc/dangit/internal/termstyle"
+	"github.com/0xbenc/termchrome"
+	"github.com/0xbenc/termnav/render"
 )
 
 func (m model) View() tea.View {
@@ -32,7 +34,7 @@ func (m model) style(role termstyle.Role, text string) string {
 }
 
 func (m model) scanningView() string {
-	spinner := m.style(termstyle.RoleAccent, spinnerFrames[m.frame])
+	spinner := m.style(termstyle.RoleAccent, m.glyphs.Frame(m.frame))
 	title := m.style(termstyle.RoleTitle, "dangit")
 	root := m.style(termstyle.RoleMuted, "scanning "+m.opts.RootLabel)
 
@@ -110,9 +112,14 @@ func (m model) listView() string {
 			marker = m.style(termstyle.RoleDanger, "✗")
 		}
 
-		path := termstyle.PadRight(r.Path, pathWidth)
+		base := func(s string) string { return s }
 		if selected {
-			path = m.style(termstyle.RoleSelected, path)
+			base = func(s string) string { return m.style(termstyle.RoleSelected, s) }
+		}
+		hl := func(s string) string { return m.style(termstyle.RoleSearch, s) }
+		path := render.HighlightMatches(r.Path, m.filtPos[i], pathWidth, base, hl)
+		if pad := pathWidth - termstyle.VisibleWidth(r.Path); pad > 0 {
+			path += base(strings.Repeat(" ", pad))
 		}
 		branch := m.style(termstyle.RolePrimary, "("+r.Branch+")")
 
@@ -180,13 +187,27 @@ func (m model) confirmView() string {
 }
 
 func (m model) footer() string {
-	var keys string
+	var hints []termchrome.KeyHint
 	if m.filtering {
-		keys = "type to filter · enter apply · esc clear"
+		hints = []termchrome.KeyHint{
+			{Key: "type", Label: "to filter"},
+			{Key: "enter", Label: "apply"},
+			{Key: "esc", Label: "clear"},
+		}
 	} else {
-		keys = "↑↓ move · / filter · ⏎ detail · s shell · e editor · y copy · R resolve · r rescan · q quit"
+		hints = []termchrome.KeyHint{
+			{Key: "↑↓", Label: "move"},
+			{Key: "/", Label: "filter"},
+			{Key: "⏎", Label: "detail"},
+			{Key: "s", Label: "shell"},
+			{Key: "e", Label: "editor"},
+			{Key: "y", Label: "copy"},
+			{Key: "R", Label: "resolve"},
+			{Key: "r", Label: "rescan"},
+			{Key: "q", Label: "quit"},
+		}
 	}
-	footer := "\n" + m.style(termstyle.RoleMuted, truncate(keys, m.width))
+	footer := "\n" + m.style(termstyle.RoleMuted, termchrome.Footer(hints, m.width))
 	if m.notice != "" {
 		role := termstyle.RoleInfo
 		if m.noticeErr {
