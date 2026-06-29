@@ -10,9 +10,10 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/0xbenc/dangit/internal/clipboard"
-	"github.com/0xbenc/dangit/internal/fuzzy"
 	"github.com/0xbenc/dangit/internal/scan"
 	"github.com/0xbenc/dangit/internal/termstyle"
+	"github.com/0xbenc/termchrome"
+	"github.com/0xbenc/termnav"
 )
 
 type phase int
@@ -23,8 +24,6 @@ const (
 )
 
 const spinnerInterval = 110 * time.Millisecond
-
-var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 
 // Messages streamed from the scan goroutine and async actions.
 type (
@@ -80,6 +79,7 @@ type model struct {
 	total   int
 	current string
 	frame   int
+	glyphs  termchrome.GlyphSet // locale-resolved spinner/progress glyph set
 
 	// results
 	flagged  []scan.Result
@@ -90,6 +90,7 @@ type model struct {
 	query     string
 	filtering bool
 	filtered  []int
+	filtPos   [][]int // fuzzy match rune positions, parallel to filtered (nil when unfiltered)
 	cursor    int
 	offset    int
 
@@ -114,6 +115,7 @@ func newModel(ctx context.Context, opts BrowseOptions) model {
 		ctx:      ctx,
 		opts:     opts,
 		theme:    theme,
+		glyphs:   termchrome.ResolveGlyphs(opts.Env),
 		phase:    phaseScanning,
 		scanCh:   make(chan tea.Msg, 256),
 		resolved: make(map[string]bool),
@@ -177,7 +179,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case spinnerTickMsg:
 		if m.phase == phaseScanning {
-			m.frame = (m.frame + 1) % len(spinnerFrames)
+			if n := len(m.glyphs.Spinner); n > 0 {
+				m.frame = (m.frame + 1) % n
+			}
 			return m, spinnerTick()
 		}
 		return m, nil
@@ -510,14 +514,17 @@ func (m *model) applyRefresh(msg refreshMsg) {
 
 func (m *model) applyFilter() {
 	m.filtered = m.filtered[:0]
+	m.filtPos = m.filtPos[:0]
 	q := strings.TrimSpace(m.query)
 	for i, r := range m.flagged {
 		if q == "" {
 			m.filtered = append(m.filtered, i)
+			m.filtPos = append(m.filtPos, nil)
 			continue
 		}
-		if _, ok := fuzzy.Match(q, r.Path); ok {
+		if res, ok := termnav.MatchFuzzy(q, r.Path); ok {
 			m.filtered = append(m.filtered, i)
+			m.filtPos = append(m.filtPos, res.Positions)
 		}
 	}
 	if m.cursor >= len(m.filtered) {

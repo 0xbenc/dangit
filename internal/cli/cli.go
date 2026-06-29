@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/x/term"
 
 	"github.com/0xbenc/dangit/internal/termstyle"
+	"github.com/0xbenc/termtheme"
 )
 
 const usage = `dangit — find git repos with unfinished work
@@ -32,6 +33,8 @@ Flags:
       --no-color         Disable colored output
       --no-alt-screen    Render the browser inline (no alternate screen)
       --theme-file PATH  Load the theme from PATH
+      --intro            Force the startup intro animation this run
+      --no-intro         Skip the startup intro animation this run
   -y, --yes              Actually perform resolve actions (default: dry run)
   -m, --message MSG      Commit message for resolve (default: generated)
 
@@ -40,6 +43,9 @@ Environment:
   DANGIT_NO_NETWORK    Skip remote checks when truthy
   DANGIT_NO_COLOR      Disable color when truthy
   DANGIT_THEME_FILE    Theme config path
+  DANGIT_INTRO_ALWAYS  Always play the startup intro (not just once per version)
+  DANGIT_NO_INTRO      Never play the startup intro
+  DANGIT_STATE_DIR     Override the state directory (intro bookkeeping)
   NO_COLOR             Disable color when set
 
 Exit codes: 0 clean · 1 repos need attention · 2 usage error
@@ -79,6 +85,7 @@ func Run(args []string, stdout io.Writer, stderr io.Writer, build BuildInfo) int
 		build:     build.normalized(),
 		stdoutTTY: isFileTTY(os.Stdout),
 		stdinTTY:  isFileTTY(os.Stdin),
+		stderrTTY: isFileTTY(os.Stderr),
 	}
 	return r.run(args)
 }
@@ -90,6 +97,7 @@ type runner struct {
 	build     BuildInfo
 	stdoutTTY bool
 	stdinTTY  bool
+	stderrTTY bool
 }
 
 func (r runner) run(args []string) int {
@@ -154,6 +162,37 @@ func (r runner) resolveNoNetwork(f flags) bool {
 
 func isFileTTY(f *os.File) bool {
 	return f != nil && term.IsTerminal(f.Fd())
+}
+
+// introVersionLabel formats a build version for the intro's bottom road band:
+// "dev" for an unset/dev build, else "vX.Y.Z".
+func introVersionLabel(v string) string {
+	if v == "" || v == "dev" {
+		return "dev"
+	}
+	return "v" + v
+}
+
+// introDecision is the pure (TTY-independent) intro gate. Precedence: explicit
+// suppression wins, then force, then the once-per-version default.
+func introDecision(f flags, env []string, lastVersion, buildVersion string) bool {
+	values := termtheme.EnvMap(env)
+	if f.noIntro || termtheme.EnvTruthy(values["DANGIT_NO_INTRO"]) {
+		return false
+	}
+	if f.intro || termtheme.EnvTruthy(values["DANGIT_INTRO_ALWAYS"]) {
+		return true
+	}
+	return lastVersion != buildVersion
+}
+
+// shouldPlayIntro decides whether to play the startup intro this run: only on an
+// interactive stderr TTY (the intro renders to stderr), then per introDecision.
+func (r runner) shouldPlayIntro(f flags, lastVersion string) bool {
+	if !r.stderrTTY {
+		return false
+	}
+	return introDecision(f, r.env, lastVersion, r.build.Version)
 }
 
 func defaultString(value, fallback string) string {
