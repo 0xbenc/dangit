@@ -28,6 +28,26 @@ offline and require no network, credentials, or global git config — identity a
 isolation are injected via the environment. Never push to a real remote from a
 test. See `internal/scan/scan_test.go` for the fixture pattern.
 
+## Shared TUI stack & drift guards
+
+dangit shares its terminal-UI primitives with [passage](https://github.com/0xbenc/passage)
+and [ssherpa](https://github.com/0xbenc/ssherpa) through four semver-pinned modules:
+`termtheme` (roles + `.theme`), `termnav` (fuzzy matcher + match highlighting),
+`termchrome` (footer/box/kvrow + glyphs/spinner), and `termintro` (the startup
+animation). Keep them aligned — the `tui-conformance` CI job enforces it:
+
+- **Footers** go through `termchrome.Footer([]termchrome.KeyHint{...})` — never a
+  hand-built multi-space separator (CI greps for `  /  `).
+- **Spinners** use `termchrome.ResolveGlyphs` — never inline frame runes (CI greps
+  for the braille frames and `[]rune{'|',...}`).
+- **No golden-update flag** — expectations are inline string literals; pixel changes
+  are hand-edited.
+- **No `replace`** in the released `go.mod`; pin tagged shared-module versions. When a
+  shared module changes, bump dangit (and the sibling apps) to the new tag.
+- The `termintro` intro plays on an interactive TTY only, once per version
+  (`internal/state/intro.json`); `--intro`/`--no-intro` + `DANGIT_INTRO_ALWAYS`/
+  `DANGIT_NO_INTRO` control it.
+
 ## Safety
 
 `resolve` is the one mutating, outward-facing path. Keep its guards intact: dry
