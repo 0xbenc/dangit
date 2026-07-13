@@ -6,7 +6,7 @@ require (
 	charm.land/bubbletea/v2 v2.0.8
 	github.com/0xbenc/termchrome v0.1.0
 	github.com/0xbenc/termintro v0.1.1
-	github.com/0xbenc/termnav v0.2.0
+	github.com/0xbenc/termnav v0.2.1
 	github.com/0xbenc/termtheme v0.2.0
 	github.com/charmbracelet/x/term v0.2.2
 )
